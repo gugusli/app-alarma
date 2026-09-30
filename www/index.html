@@ -19,7 +19,8 @@
   }
   input { background: #161b22; color: #e6edf3; margin-bottom: 12px; }
   button { background: #238636; color: #fff; border: 0; font-weight: 600; }
-  #estado { margin-top: 14px; font-size: 14px; min-height: 20px; }
+  #forzar { display: none; margin-top: 10px; background: #30363d; }
+  #estado { margin-top: 14px; font-size: 14px; min-height: 20px; line-height: 1.4; }
   .err { color: #f85149; }
   .ok { color: #3fb950; }
 </style>
@@ -27,15 +28,17 @@
 <body>
 <div class="card">
   <h1>Sistema de Alarma</h1>
-  <p>Ingresá la dirección del servidor donde corre el dashboard (la IP de tu PC y el puerto).</p>
-  <input id="url" type="url" inputmode="url" placeholder="http://192.168.1.50:5000" autocomplete="off">
+  <p>Ingresá la dirección del servidor donde corre el dashboard.</p>
+  <input id="url" type="url" inputmode="url" placeholder="https://algo.trycloudflare.com" autocomplete="off">
   <button id="btn">Conectar</button>
+  <button id="forzar">Abrir igual</button>
   <div id="estado"></div>
 </div>
 <script>
   const KEY = "alarma_server_url";
   const input = document.getElementById("url");
   const estado = document.getElementById("estado");
+  const btnForzar = document.getElementById("forzar");
 
   function normalizar(v) {
     v = (v || "").trim().replace(/\/+$/, "");
@@ -44,28 +47,40 @@
     return v;
   }
 
+  function abrir(url) {
+    localStorage.setItem(KEY, url);
+    location.replace(url + "/");
+  }
+
   async function conectar(url) {
     estado.className = "";
-    estado.textContent = "Conectando...";
+    estado.textContent = "Conectando... (puede tardar hasta 25 segundos)";
+    btnForzar.style.display = "none";
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 25000);
     try {
-      const ctl = new AbortController();
-      const t = setTimeout(() => ctl.abort(), 6000);
-      // no-cors: solo nos interesa saber si el servidor responde
-      await fetch(url + "/", { mode: "no-cors", signal: ctl.signal });
+      await fetch(url + "/", { mode: "no-cors", cache: "no-store", signal: ctl.signal });
       clearTimeout(t);
-      localStorage.setItem(KEY, url);
       estado.className = "ok";
       estado.textContent = "Conectado";
-      location.replace(url + "/");
+      abrir(url);
     } catch (e) {
+      clearTimeout(t);
       estado.className = "err";
-      estado.textContent = "No se pudo conectar. Revisá que el dashboard esté corriendo, que estés en el mismo WiFi y que la IP sea correcta.";
+      estado.textContent = "No se pudo comprobar la conexión (" + e.name + ": " + e.message +
+        "). Si la URL carga en Chrome, probá con \"Abrir igual\".";
+      btnForzar.style.display = "block";
     }
   }
 
   document.getElementById("btn").addEventListener("click", () => {
     const url = normalizar(input.value);
     if (url) conectar(url);
+  });
+
+  btnForzar.addEventListener("click", () => {
+    const url = normalizar(input.value);
+    if (url) abrir(url);
   });
 
   const guardada = localStorage.getItem(KEY);
