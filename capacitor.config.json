@@ -1,0 +1,10 @@
+{
+  "appId": "com.eest5.alarma",
+  "appName": "Alarma",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  }
+}
